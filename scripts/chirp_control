@@ -1,0 +1,67 @@
+#!/bin/sh
+#
+# chkconfig: 2345 70 40
+# description: chirp startup script
+#
+# Author: Suchandra Thapa sthapa@ci.uchicago.edu
+CHIRP=/usr/local/chirp/bin/chirp_server_hdfs
+export JAVA_OPTS="-server -Xmx1024m"
+export JAVA_HOME=/usr/java
+export HADOOP_HOME=/usr/lib/hadoop
+export LIBJVM_PATH=/usr/java/default/jre/lib/amd64/server/libjvm.so
+export LIBHDFS_PATH=/usr/lib64/libhdfs.so
+
+. /etc/rc.d/init.d/functions
+
+RETVAL=0
+CHIRP_DIR=$HOME/.chirp
+CHIRP_LOCKFILE=$CHIRP_DIR/chirp_running 
+CHIRP_PIDFILE=$CHIRP_DIR/chirp.pid
+case "$1" in
+   start)
+      [ -f $CHIRP ] || exit 1
+      if [ ! -e $CHIRP_DIR ] ;
+      then
+          mkdir $CHIRP_DIR 
+      fi
+      username=`whoami`
+      if [ ! -e $CHIRP_DIR/acl ];
+      then
+          echo "unix:$username rwlda" > $CHIRP_DIR/acl        
+      fi
+      daemon --pidfile $CHIRP_PIDFILE $CHIRP -b -r hdfs://uc3-cloud.mwt2.org:9000/users/$username -Z $CHIRP_DIR/chirp.port -A $CHIRP_DIR/acl& 
+      RETVAL=$?
+      echo
+      if [ $RETVAL -eq 0 ] ;
+      then
+          touch $CHIRP_LOCKFILE
+          echo $CHIRP_PORT > $CHIRP_DIR/chirp.port
+	      pid="$(pidofproc chirp_server)"
+	      echo  $pid > $CHIRP_PIDFILE
+	      success  
+	      echo "Starting chirp server:"
+      fi
+        ;;
+
+  stop)
+      echo -n "Shutting down chirp server: "
+      killproc -p $CHIRP_PIDFILE chirp_server
+      echo
+      [ $RETVAL -eq 0 ] && rm $CHIRP_LOCKFILE
+	;;
+
+  restart|reload)
+   	$0 stop
+   	$0 start
+   	RETVAL=$?
+	;;
+  status)
+   	status -p $CHIRP_PIDFILE $CHIRP
+   	RETVAL=$?
+	;;
+  *)
+	echo "Usage: $0 {start|stop|restart|status}"
+	exit 1
+esac
+
+exit $RETVAL
