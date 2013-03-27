@@ -12,11 +12,19 @@ export LIBJVM_PATH=/usr/java/default/jre/lib/amd64/server/libjvm.so
 export LIBHDFS_PATH=/usr/lib64/libhdfs.so
 
 . /etc/rc.d/init.d/functions
+. ~/.chirp/chirp_options
 
 RETVAL=0
 CHIRP_DIR=$HOME/.chirp
 CHIRP_LOCKFILE=$CHIRP_DIR/chirp_running 
 CHIRP_PIDFILE=$CHIRP_DIR/chirp.pid
+if [ -s HDFS_URI ];
+    CHIRP=$CCTOOLS_BINDIR/cctools/bin/chirp_server_hdfs
+    EXPORT_DIR=$HDFS_URI
+else 
+    CHIRP=$CCTOOLS_BINDIR/cctools/bin/chirp_server
+fi
+
 case "$1" in
    start)
       [ -f $CHIRP ] || exit 1
@@ -29,7 +37,7 @@ case "$1" in
       then
           echo "unix:$username rwlda" > $CHIRP_DIR/acl        
       fi
-      daemon --pidfile $CHIRP_PIDFILE $CHIRP -b -r hdfs://uc3-cloud.mwt2.org:9000/users/$username -Z $CHIRP_DIR/chirp.port -A $CHIRP_DIR/acl& 
+      daemon --pidfile $CHIRP_PIDFILE $CHIRP -b -r $EXPORT_DIR -Z $CHIRP_DIR/chirp.port -A $CHIRP_DIR/acl& 
       RETVAL=$?
       echo
       if [ $RETVAL -eq 0 ] ;
