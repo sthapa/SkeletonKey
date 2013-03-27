@@ -97,6 +97,8 @@ def install_application():
                      "HDFS uri to export")
     cctools_dir = setup_binaries(options)
     setup_chirp(options, cctools_dir)
+    sys.stdout.write("SkeletonKey and CCTools installed in %s, " \
+                     "Chirp configuration saved to ~/.chirp" % options.bin_dir)
 
 if __name__ == '__main__':
     install_application()
