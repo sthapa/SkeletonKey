@@ -1,0 +1,3 @@
+include README
+recursive-include scripts *
+recursive-include config *
