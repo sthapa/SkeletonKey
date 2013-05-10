@@ -4,7 +4,6 @@
 # description: chirp startup script
 #
 # Author: Suchandra Thapa sthapa@ci.uchicago.edu
-CHIRP=/usr/local/chirp/bin/chirp_server_hdfs
 export JAVA_OPTS="-server -Xmx1024m"
 export JAVA_HOME=/usr/java
 export HADOOP_HOME=/usr/lib/hadoop
@@ -18,11 +17,12 @@ RETVAL=0
 CHIRP_DIR=$HOME/.chirp
 CHIRP_LOCKFILE=$CHIRP_DIR/chirp_running 
 CHIRP_PIDFILE=$CHIRP_DIR/chirp.pid
-if [ -s HDFS_URI ];
-    CHIRP=$CCTOOLS_BINDIR/cctools/bin/chirp_server_hdfs
+if [[ -n $HDFS_URI ]];
+then
+    CHIRP=$CCTOOLS_BINDIR/bin/chirp_server_hdfs
     EXPORT_DIR=$HDFS_URI
 else 
-    CHIRP=$CCTOOLS_BINDIR/cctools/bin/chirp_server
+    CHIRP=$CCTOOLS_BINDIR/bin/chirp_server
 fi
 
 case "$1" in

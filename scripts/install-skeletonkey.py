@@ -1,8 +1,8 @@
 #!/usr/bin/python
 
-import os, optparse, sys, re, urllib2, tarfile, tempfile
+import os, optparse, sys, re, urllib2, tarfile, tempfile, shutil
 
-version = '1.0'
+version = '0.4'
 
 def setup_chirp(options, cctools_dir):
     """Setup .chirp and setup chirp options"""
@@ -18,7 +18,8 @@ def setup_chirp(options, cctools_dir):
     else:
         sys.stderr.write("Export directory for chirp not given!\n")
         sys.exit(1)
-    chirp_config.wrote("CCTOOLS_BINDIR=%\n" % cctools_dir)
+    chirp_config.write("CCTOOLS_BINDIR=%s\n" % cctools_dir)
+    chirp_config.write("CHIRP_HOST=%s\n" % os.uname()[1])
     chirp_config.close()
 
 def download_tarball(url, path):
@@ -63,14 +64,26 @@ def setup_binaries(options):
             os.path.join(options.bin_dir, 'chirp_server'))
     os.link(os.path.join(cctools_dir, 'bin', 'chirp_server_hdfs'),
             os.path.join(options.bin_dir, 'chirp_server_hdfs'))
+    os.link(os.path.join(cctools_dir, 'bin', 'chirp'),
+            os.path.join(options.bin_dir, 'chirp'))
+    shutil.copytree(cctools_dir, os.path.join(options.bin_dir, 'parrot'))
+    current_dir = os.getcwd()
+    os.chdir(options.bin_dir)
+    shutil.rmtree(os.path.join('parrot', 'doc'))
+    shutil.rmtree(os.path.join('parrot', 'share'))
+    tarball = tarfile.open('parrot.tar.gz', mode='w:gz')
+    tarball.add('parrot')
+    tarball.close()
+    shutil.rmtree('parrot')
+    os.chdir(current_dir)
 
-    sk_url = "http://uc3-data.uchicago.edu/skeletonkey/skeletonkey-current.tar.gz"   
+    sk_url = "http://uc3-data.uchicago.edu/sk/skeleton-key-current.tar.gz"   
     sk_dir = download_tarball(sk_url, options.bin_dir)
-    os.link(os.path.join(sk_dir, 'bin', 'skeleton_key'),
+    os.link(os.path.join(sk_dir, 'scripts', 'skeleton_key'),
             os.path.join(options.bin_dir, 'skeleton_key'))
-    os.link(os.path.join(sk_dir, 'bin', 'chirp_control'),
+    os.link(os.path.join(sk_dir, 'scripts', 'chirp_control'),
             os.path.join(options.bin_dir, 'chirp_control'))
-    return cctools_dir
+    return os.path.abspath(cctools_dir)
 
 
 def install_application():
@@ -97,8 +110,9 @@ def install_application():
                      "HDFS uri to export")
     cctools_dir = setup_binaries(options)
     setup_chirp(options, cctools_dir)
-    sys.stdout.write("SkeletonKey and CCTools installed in %s, " \
-                     "Chirp configuration saved to ~/.chirp" % options.bin_dir)
+    install_location = os.path.abspath(options.bin_dir)
+    sys.stdout.write("SkeletonKey and CCTools installed in %s\n" % install_location)
+    sys.stdout.write("Chirp configuration saved to ~/.chirp\n")
 
 if __name__ == '__main__':
     install_application()

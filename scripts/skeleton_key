@@ -2,7 +2,7 @@
 
 import optparse, os, sys, ConfigParser, getpass, re, urlparse, time
 
-VERSION = '0.3'
+VERSION = '0.4'
 
 
 def get_directories(config, dir_type):
@@ -55,14 +55,19 @@ def prefix_base(base_dir, path):
   
 def get_chirp_host():
   """
-  Get chirp host information, starting chirp if necessary
+  Get chirp host information
   """
   chirp_dir = os.path.expanduser('~/.chirp')
-  if not os.path.exists(os.path.join(chirp_dir, 'chirp_running')):
-    os.system('/usr/local/bin/chirp_control start')
-    time.sleep(3)
+  options = open(os.path.join(chirp_dir, 'chirp_options')).read().strip()
+  match = re.search('CHIRP_HOST=\s*(\w.*)', options)
+  if match is None:
+    sys.stderr.write("Can't get chirp host, has SkeletonKey been installed?")
+    sys.exit(1)
+  if not os.path.exists(os.path.join(chirp_dir, 'chirp.port')):
+    sys.stderr.write("Can't get chirp port, has chirp been started?")
+    sys.exit(1)
   port = open(os.path.join(chirp_dir, 'chirp.port')).read().strip()
-  return "uc3-data.uchicago.edu:%s" % port
+  return "%s:%s" % (match.group(1), port)
   
   
 def generate_xrootd_args(config):
@@ -152,9 +157,9 @@ if __name__ == '__main__':
   
   read_directions = []
   write_directions = []
-  ticket = ""
-  chirp_host = get_chirp_host()
   if config.has_section('Directories'):
+    ticket = ""
+    chirp_host = get_chirp_host()
     read_directories = get_directories(config, 'read')
     write_directories = get_directories(config, 'write')
     ticket_call = "chirp %s ticket_create -output myticket.ticket -bits 1024 -duration 86400 " % chirp_host
@@ -178,7 +183,8 @@ if __name__ == '__main__':
     #  sys.exit(1)  
     ticket = open('myticket.ticket').read().replace('"', r'\"')  
     os.unlink('myticket.ticket')
-
+  else:
+    ticket = ""
 
   parrot_url = 'http://uc3-data.uchicago.edu/parrot.tar.gz'
   if config.has_section('Parrot'):  
@@ -193,7 +199,7 @@ if __name__ == '__main__':
   
   
   script_contents = "#!/bin/bash\n"
-  script_contents += "curr_dir=`cwd`\n"
+  script_contents += "curr_dir=`pwd`\n"
   script_contents += "ticket=\"\n%s\n\"\n" % ticket
   script_contents += "temp_directory=`mktemp -d`\n" 
   script_contents += '''
@@ -214,10 +220,14 @@ if __name__ == '__main__':
   for pubkey in pubkeys:
     script_contents += "wget %s\n" % pubkey
   xrootd_arguments = generate_xrootd_args(config)
-  script_contents += "export CHIRP_MOUNT=/chirp/%s\n" % chirp_host
-  script_contents += "export PARROT_ALLOW_SWITCHING_CVMFS_REPOSITORIES=1\n"
+  if config.has_section('Directories'):
+    script_contents += "export CHIRP_MOUNT=/chirp/%s\n" % chirp_host
+  if config.has_section('CVMFS'):
+    script_contents += "export PARROT_ALLOW_SWITCHING_CVMFS_REPOSITORIES=1\n"
   script_contents += "export PARROT_HELPER=`pwd`/parrot/lib/libparrot_helper.so\n"
-  script_contents += "./parrot/bin/parrot_run -a ticket -i ./chirp.ticket "
+  script_contents += "./parrot/bin/parrot_run "
+  if config.has_section('Directories'):
+    script_contents += "-a ticket -i ./chirp.ticket "
   script_contents += "-t $temp_directory/parrot_cache "
   script_contents += "%s %s" % (cvmfs_arguments, xrootd_arguments)
   script_contents +=  "%s %s $@\n" % (config.get('Application', 'script'), arguments)  
