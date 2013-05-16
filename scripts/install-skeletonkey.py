@@ -22,6 +22,17 @@ def setup_chirp(options, cctools_dir):
     chirp_config.write("CHIRP_HOST=%s\n" % os.uname()[1])
     chirp_config.close()
 
+def setup_skeletonkey(options, sk_dir):
+    """Setup .skeletonkey and setup skeletonkey options"""
+    sk_dir = os.path.expanduser('~/.skeletonkey')
+    if not os.path.exists(sk_dir):
+        os.mkdir(sk_dir, 0700)
+    sk_config_path = os.path.join(sk_dir, "sk_options")
+    sk_config = open(sk_config_path, "w")
+    sk_config.write("[Installation]\n")
+    sk_config.write("location = %s\n" % sk_dir)
+    sk_config.close()
+
 def download_tarball(url, path):
     """Download a tarball from a given url and extract it to specified path"""
 
@@ -41,13 +52,6 @@ def download_tarball(url, path):
 
 def setup_binaries(options):
     """Download the appropriate version of cctools and install"""
-    release_info = open('/etc/redhat-release').read()
-    match = re.search('release\s(\d)', release_info)
-    if match is None:
-        sys.stderr.write("Can't get RHEL/SL version on this system\n")
-        sys.exit(1)
-    else:
-       os_version = match.group(1)
     cctools_page = urllib2.urlopen('http://www3.nd.edu/~ccl/software/files/').read()
     latest_version = None
     try:
@@ -56,26 +60,32 @@ def setup_binaries(options):
     except:
         sys.stderr.write("Can't get cctools tarball link\n")
         sys.exit(1)
-    cctools_url = "http://www3.nd.edu/~ccl/software/files/" \
-                  "cctools-%s-x86_64-redhat%s.tar.gz" % (latest_version, 
-                                                         os_version)
-    cctools_dir = download_tarball(cctools_url, options.bin_dir)
-    os.link(os.path.join(cctools_dir, 'bin', 'chirp_server'),
-            os.path.join(options.bin_dir, 'chirp_server'))
-    os.link(os.path.join(cctools_dir, 'bin', 'chirp_server_hdfs'),
-            os.path.join(options.bin_dir, 'chirp_server_hdfs'))
-    os.link(os.path.join(cctools_dir, 'bin', 'chirp'),
-            os.path.join(options.bin_dir, 'chirp'))
-    shutil.copytree(cctools_dir, os.path.join(options.bin_dir, 'parrot'))
-    current_dir = os.getcwd()
-    os.chdir(options.bin_dir)
-    shutil.rmtree(os.path.join('parrot', 'doc'))
-    shutil.rmtree(os.path.join('parrot', 'share'))
-    tarball = tarfile.open('parrot.tar.gz', mode='w:gz')
-    tarball.add('parrot')
-    tarball.close()
-    shutil.rmtree('parrot')
-    os.chdir(current_dir)
+    for os_version in (5, 6):
+      cctools_url = "http://www3.nd.edu/~ccl/software/files/" \
+                    "cctools-%s-x86_64-redhat%s.tar.gz" % (latest_version, 
+                                                           os_version)
+      cctools_dir = download_tarball(cctools_url, options.bin_dir)
+      os.link(os.path.join(cctools_dir, 'bin', 'chirp_server'),
+              os.path.join(options.bin_dir, 'chirp_server'))
+      os.link(os.path.join(cctools_dir, 'bin', 'chirp_server_hdfs'),
+              os.path.join(options.bin_dir, 'chirp_server_hdfs'))
+      os.link(os.path.join(cctools_dir, 'bin', 'chirp'),
+              os.path.join(options.bin_dir, 'chirp'))
+      shutil.copytree(cctools_dir, os.path.join(options.bin_dir, 'parrot'))
+      current_dir = os.getcwd()
+      os.chdir(options.bin_dir)
+      shutil.rmtree(os.path.join('parrot', 'doc'))
+      shutil.rmtree(os.path.join('parrot', 'share'))
+      tarball = tarfile.open("parrot-sl%s.tar.gz" % os_version, mode='w:gz')
+      tarball.add('parrot')
+      tarball.close()
+      shutil.rmtree('parrot')
+      os.chdir(current_dir)
+
+    return os.path.abspath(cctools_dir)
+
+def setup_sk_binaries(options):
+    """Download the appropriate version of SkeletonKey and install"""
 
     sk_url = "http://uc3-data.uchicago.edu/sk/skeleton-key-current.tar.gz"   
     sk_dir = download_tarball(sk_url, options.bin_dir)
@@ -83,7 +93,7 @@ def setup_binaries(options):
             os.path.join(options.bin_dir, 'skeleton_key'))
     os.link(os.path.join(sk_dir, 'scripts', 'chirp_control'),
             os.path.join(options.bin_dir, 'chirp_control'))
-    return os.path.abspath(cctools_dir)
+    return os.path.abspath(sk_dir)
 
 
 def install_application():
@@ -108,11 +118,14 @@ def install_application():
     if ((options.export_dir is None and options.hdfs_uri is None)):
         parser.error("Please give specify whether a local directory or " +
                      "HDFS uri to export")
-    cctools_dir = setup_binaries(options)
+    cctools_dir = setup_cctools_binaries(options)
+    sk_dir = setup_sk_binaries(options)
     setup_chirp(options, cctools_dir)
+    setup_skeletonkey(options, sk_dir)
     install_location = os.path.abspath(options.bin_dir)
     sys.stdout.write("SkeletonKey and CCTools installed in %s\n" % install_location)
     sys.stdout.write("Chirp configuration saved to ~/.chirp\n")
+    sys.stdout.write("SkeletonKey configuration saved to ~/.skeletonkey\n")
 
 if __name__ == '__main__':
     install_application()

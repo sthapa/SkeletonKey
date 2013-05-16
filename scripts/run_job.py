@@ -6,7 +6,11 @@ TICKET_CONTENTS = """%%%TICKET%%%
 """
 CHIRP_MOUNT = '%%%CHIRP_MOUNT%%%'
 WEB_PROXY= '%%%WEB_PROXY%%%'
+APP_URL = '%%%APP_URL%%%'
 PARROT_URL = '%%%PARROT_URL%%%'
+JOB_SCRIPT = '%%%JOB_SCRIPT%%%'
+JOB_ARGS = %%%JOB_ARGS%%%
+CVMFS_INFO = %%%CVMFS_INFO%%%
 
 def write_ticket(directory):
   """Write out ticket information in directory specified"""
@@ -58,7 +62,16 @@ def generate_env(parrot_path):
 
 def run_application(temp_dir):
    """Run specified user application in a parrot environment"""
-   
+  job_env = generate_env(temp_dir)
+  job_args = [JOB_SCRIPT]
+  job_args.extend(JOB_ARGS.split(' '))
+  if len(sys.argv) > 1:
+    job_args.extend(sys.argv[1:])
+
+  process_obj = subprocess.Popen(job_args, 
+                                 env=job_env)
+  process_obj.communicate()
+
 def main():
   """Setup and run application"""
   parser = optparse.OptionParser(version="%prog " + version)
@@ -71,21 +84,24 @@ def main():
   try:
     temp_dir = tempfile.mkdtemp()
   except IOError:
-    sys.stderr.write("Can't create temporary directory, exiting...")
+    sys.stderr.write("Can't create temporary directory, exiting...\n")
     sys.exit(1)
 
 
   if TICKET_CONTENTS != "":
+    if ticket_expired(TICKET_CONTENTS):
+      sys.stderr.write("ERROR: Ticket expired, exiting...\n")
+      sys.exit(1)
     if not write_ticket(temp_dir):
-      sys.stderr.write("Can't create temporary directory, exiting...")
+      sys.stderr.write("Can't create temporary directory, exiting...\n")
       sys.exit(1)
         
   if not setup_parrot(PARROT_URL):
-    sys.stderr.write("Can't download parrot binaries, exiting...")
+    sys.stderr.write("Can't download parrot binaries, exiting...\n")
     sys.exit(1)
   if APP_URL != '':
     if not setup_application(APP_URL):       
-      sys.stderr.write("Can't download application binaries, exiting...")
+      sys.stderr.write("Can't download application binaries, exiting...\n")
       sys.exit(1)
   exit_code = run_application(args):
   if not options.debug:
