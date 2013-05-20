@@ -10,7 +10,8 @@ def get_directories(config, dir_type):
   Get read or write directories and return formatted list
   """
   
-  if config.has_option('Directories', dir_type) and config.get('Directories', dir_type) != '':
+  if (config.has_option('Directories', dir_type) and 
+      config.get('Directories', dir_type) != ''):
     directories = config.get('Directories', dir_type).split(',')
     directories = map(lambda x: x.strip(), directories)
     return directories
@@ -94,7 +95,7 @@ def parse_cvmfs_options(config):
     opt_name = "repo%s_options" % repo_num
     if config.has_option('CVMFS', opt_name):
       cvmfs_options = config.get('CVMFS', opt_name)
-      cvmfs_options = set_cvmfs_key(cvmfs_options, keys[-1]) 
+      cvmfs_options = set_cvmfs_key(cvmfs_options, cvmfs_info[repo_opt]['key'])
       cvmfs_info[repo_opt]['options'] = cvmfs_options
     else:
       sys.stderr.write("Missing %s in CVMFS section\n" % opt_name)
@@ -137,8 +138,10 @@ def parse_args(job_args):
   """
   Parse string with job arguments into a list for inclusion in job wrapper
   """
-  tokens = job_args.split(' ')
   args = []
+  if job_args == "":
+    return args
+  tokens = job_args.split(' ')
   double_quotes = False
   single_quotes = False
   cur_token = ''
@@ -175,59 +178,83 @@ def parse_args(job_args):
         single_quotes = False
   return args
 
-def parse_cvmfs_options(config):
-  cvmfs_info = {}
+def get_wrapper_template():
+  """
+  Check the parrot config and get the wrapper template based on that
+  """
+  wrapper_location = None
+  config = ConfigParser.SafeConfigParser()
+  config.read(os.path.expanduser('~/.skeletonkey.config'))
+  if (config.has_section('Installation') and
+      config.has_option('Installation', 'location')):
+    wrapper_location =  os.path.join(config.get('Installation', 'location'), 
+                                     'templates',
+                                     'run_job.py')
+  else:
+    sys.stderr.write("Can't find location of wrapper template\n")
+    sys.exit(1)
+  if (not os.path.exists(wrapper_location) or 
+      not os.path.isfile(wrapper_location)):
+    sys.stderr.write("Wrapper template not in specified " \
+                     "location: %s\n" % wrapper_location)
+    sys.exit(1)
+  return open(wrapper_location).read()
 
-  return cvmfs_info
 def create_job_wrapper(output_file, config):
   """Generate a job wrapper"""
   try:
-    wrapper_template = get_wrapper_template()
-    chirp_ticket = generate_chirp_ticket(config)
+    template = get_wrapper_template()
+    chirp_ticket = create_chirp_ticket(config)
     if chirp_ticket is None:
       sys.stderr.write("Error occurred when generating ticket, exiting...\n")
       return False
-    wrapper_template.replace('%%%TICKET_CONTENTS%%%', chirp_ticket)
+    template = template.replace('%%%TICKET%%%', 
+                                chirp_ticket)
     if (config.has_option('Application', 'http_proxy') and 
         config.get('Application', 'http_proxy') != ''):
-      wrapper_template.replace('%%%WEB_PROXY%%%', 
-                               config.get('Application', 'http_proxy'))
+      template = template.replace('%%%WEB_PROXY%%%', 
+                                   config.get('Application', 'http_proxy'))
+    else:
+      template = template.replace('%%%WEB_PROXY%%%', '')
+
     if (not config.has_section('Parrot') or 
         not (config.has_option('Parrot', 'location') and 
              config.get('Parrot', 'location') != '')):
-      wrapper_template.replace('%%%PARROT_URL%%%', 
-                               config.get('Parrot', 'location'))
+      template = template.replace('%%%PARROT_URL%%%', 
+                                  config.get('Parrot', 'location'))
     else:
-      wrapper_template.replace('%%%PARROT_URL%%%', 
-                               'http://uc3-data.uchicago.edu/parrot')
-    if (not config.has_section('Application') or 
-        not (config.has_option('Application', 'location') and 
-             config.get('Application', 'location') != '')):
-      wrapper_template.replace('%%%APP_URL%%%', 
-                               config.get('Application', 'location'))
+      template = template.replace('%%%PARROT_URL%%%', 
+                                  'http://uc3-data.uchicago.edu/parrot')
+    if (config.has_section('Application') and
+        config.has_option('Application', 'location') and 
+        config.get('Application', 'location') != ''):
+      template = template.replace('%%%APP_URL%%%', 
+                                  config.get('Application', 'location'))
     else:
-      wrapper_template.replace('%%%APP_URL%%%',  '')
-    wrapper_template.replace('%%%APP_URL%%%', 
-                             config.get('Application', 'script'))
-    if (not config.has_section('Application') or 
-        not (config.has_option('Application', 'arguments') and 
-             config.get('Application', 'arguments') != '')):
-      wrapper_template.replace('%%%JOB_ARGS%%%', 
-                               parse_args(config.get('Application', 'args')))
+      template = template.replace('%%%APP_URL%%%',  '""')
+    template = template.replace('%%%JOB_SCRIPT%%%', 
+                                config.get('Application', 'script'))
+    if (config.has_section('Application') and 
+        (config.has_option('Application', 'arguments') and 
+         config.get('Application', 'arguments') != '')):
+      template = template.replace('%%%JOB_ARGS%%%', 
+                                  parse_args(config.get('Application', 
+                                                        'arguments')))
     else:
-      wrapper_template.replace('%%%JOB_ARGS%%%',  '')
+      template = template.replace('%%%JOB_ARGS%%%',  '""')
     
-    wrapper_template.replace('%%%CVMFS_INFO%%%', parse_cvmfs_options(config))  
+    template = template.replace('%%%CVMFS_INFO%%%',
+                                str(parse_cvmfs_options(config)))
   
     if config.has_section('Directories'):
-      wrapper_template.replace('%%%CHIRP_MOUNT%%%',
-                               "/chirp/%s" % get_chirp_host())
-    open(output_file, 'w').write(wrapper_template)
-    os.chmod(output_file, '0700')
-   except IOError, ex:
-     sys.stderr.write("Got exception when writing wrapper:\n%s\n" % ex)
-     return False
-   return True
+      template = template.replace('%%%CHIRP_MOUNT%%%',
+                                  "/chirp/%s" % get_chirp_host())
+    open(output_file, 'w').write(template)
+    os.chmod(output_file, 0700)
+  except IOError, ex:
+    sys.stderr.write("Got exception when writing wrapper:\n%s\n" % ex)
+    return False
+  return True
 
 if __name__ == '__main__':
   parser = optparse.OptionParser(usage='Usage: %prog [options] arg1 arg2', 
@@ -265,7 +292,7 @@ if __name__ == '__main__':
     sys.exit(1)
 
   
-  if not create_job_wrapper(options.output_file, ticket, config):
+  if not create_job_wrapper(options.output_file, config):
     sys.stderr.write("Can't write job wrapper\n")
     sys.exit(1)
 

@@ -2,7 +2,7 @@
 
 import os, optparse, sys, re, urllib2, tarfile, tempfile, shutil, platform
 
-version = '0.4'
+version = '0.5'
 
 def setup_chirp(options, cctools_dir):
     """Setup .chirp and setup chirp options"""
@@ -24,10 +24,7 @@ def setup_chirp(options, cctools_dir):
 
 def setup_skeletonkey(options, sk_dir):
     """Setup .skeletonkey and setup skeletonkey options"""
-    sk_dir = os.path.expanduser('~/.skeletonkey')
-    if not os.path.exists(sk_dir):
-        os.mkdir(sk_dir, 0700)
-    sk_config_path = os.path.join(sk_dir, "sk_options")
+    sk_config_path = os.path.expanduser('~/.skeletonkey.config')
     sk_config = open(sk_config_path, "w")
     sk_config.write("[Installation]\n")
     sk_config.write("location = %s\n" % sk_dir)
@@ -134,7 +131,7 @@ def install_application():
     install_location = os.path.abspath(options.bin_dir)
     sys.stdout.write("SkeletonKey and CCTools installed in %s\n" % install_location)
     sys.stdout.write("Chirp configuration saved to ~/.chirp\n")
-    sys.stdout.write("SkeletonKey configuration saved to ~/.skeletonkey\n")
+    sys.stdout.write("SkeletonKey configuration saved to ~/.skeletonkey.config\n")
 
 if __name__ == '__main__':
     install_application()
