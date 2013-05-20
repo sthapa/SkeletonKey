@@ -82,12 +82,11 @@ def run_application(temp_dir):
   job_env = generate_env(temp_dir)
   job_args = [JOB_SCRIPT]
   job_args.extend(JOB_ARGS.split(' '))
+  os.chdir(temp_dir)
   if len(sys.argv) > 1:
     job_args.extend(sys.argv[1:])
 
-  process_obj = subprocess.Popen(job_args, 
-                                 env=job_env)
-  process_obj.communicate()
+  return subprocess.call(job_args, env=job_env)
 
 def main():
   """Setup and run application"""
