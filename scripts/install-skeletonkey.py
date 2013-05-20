@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import os, optparse, sys, re, urllib2, tarfile, tempfile, shutil
+import os, optparse, sys, re, urllib2, tarfile, tempfile, shutil, platform
 
 version = '0.4'
 
@@ -50,7 +50,7 @@ def download_tarball(url, path):
     os.unlink(download_file)
     return extract_path
 
-def setup_binaries(options):
+def setup_cctools_binaries(options):
     """Download the appropriate version of cctools and install"""
     cctools_page = urllib2.urlopen('http://www3.nd.edu/~ccl/software/files/').read()
     latest_version = None
@@ -60,17 +60,20 @@ def setup_binaries(options):
     except:
         sys.stderr.write("Can't get cctools tarball link\n")
         sys.exit(1)
-    for os_version in (5, 6):
+    sys_cctools_dir = None
+    for os_version in ('5', '6'):
       cctools_url = "http://www3.nd.edu/~ccl/software/files/" \
                     "cctools-%s-x86_64-redhat%s.tar.gz" % (latest_version, 
                                                            os_version)
       cctools_dir = download_tarball(cctools_url, options.bin_dir)
-      os.link(os.path.join(cctools_dir, 'bin', 'chirp_server'),
-              os.path.join(options.bin_dir, 'chirp_server'))
-      os.link(os.path.join(cctools_dir, 'bin', 'chirp_server_hdfs'),
-              os.path.join(options.bin_dir, 'chirp_server_hdfs'))
-      os.link(os.path.join(cctools_dir, 'bin', 'chirp'),
-              os.path.join(options.bin_dir, 'chirp'))
+      if os_version == platform.dist()[1][0]: 
+        os.link(os.path.join(cctools_dir, 'bin', 'chirp_server'),
+                os.path.join(options.bin_dir, 'chirp_server'))
+        os.link(os.path.join(cctools_dir, 'bin', 'chirp_server_hdfs'),
+                os.path.join(options.bin_dir, 'chirp_server_hdfs'))
+        os.link(os.path.join(cctools_dir, 'bin', 'chirp'),
+                os.path.join(options.bin_dir, 'chirp'))
+        sys_cctools_dir = cctools_dir
       shutil.copytree(cctools_dir, os.path.join(options.bin_dir, 'parrot'))
       current_dir = os.getcwd()
       os.chdir(options.bin_dir)
@@ -80,9 +83,11 @@ def setup_binaries(options):
       tarball.add('parrot')
       tarball.close()
       shutil.rmtree('parrot')
+      if os_version != platform.dist()[1][0]:
+        shutil.rmtree(cctools_dir)
       os.chdir(current_dir)
 
-    return os.path.abspath(cctools_dir)
+    return os.path.abspath(sys_cctools_dir)
 
 def setup_sk_binaries(options):
     """Download the appropriate version of SkeletonKey and install"""
@@ -111,13 +116,17 @@ def install_application():
     (options, args) = parser.parse_args()
     
     if (options.hdfs_uri is not None and  options.export_dir is not None):
-        parser.error("Can't specify both -e and -u, please choose one\n")
+      parser.error("Can't specify both -e and -u, please choose one\n")
     if (options.bin_dir is None):
-        parser.error("Please give the directory to install the " +
-                     "SkeletonKey binaries in\n")
+      parser.error("Please give the directory to install the " +
+                   "SkeletonKey binaries in\n")
     if ((options.export_dir is None and options.hdfs_uri is None)):
-        parser.error("Please give specify whether a local directory or " +
-                     "HDFS uri to export")
+      parser.error("Please give specify whether a local directory or " +
+                   "HDFS uri to export")
+    if (not os.path.exists(options.bin_dir) or 
+        not os.path.isdir(options.bin_dir)):
+      parser.error("Binary direction not present: %s" % options.bin_dir)
+      
     cctools_dir = setup_cctools_binaries(options)
     sk_dir = setup_sk_binaries(options)
     setup_chirp(options, cctools_dir)
