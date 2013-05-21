@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import sys, os, subprocess, shutil, optparse, platform, tempfile, urllib2, tarfile
+import urlparse
 
 TICKET_CONTENTS = """%%%TICKET%%%
 """
@@ -11,7 +12,7 @@ PARROT_URL = '%%%PARROT_URL%%%'
 JOB_SCRIPT = '%%%JOB_SCRIPT%%%'
 JOB_ARGS = %%%JOB_ARGS%%%
 CVMFS_INFO = %%%CVMFS_INFO%%%
-version = '0.5'
+version = '0.6'
 
 def write_ticket(directory):
   """
@@ -75,12 +76,44 @@ def generate_env(parrot_path):
   job_env['CHIRP_MOUNT'] = CHIRP_MOUNT
   return job_env 
 
+def create_cvmfs_options():
+  """
+  Create  CVMFS options for parrot
+  """
+  if len(CVMFS_INFO) == 0:
+    return ' '
+  cvmfs_opts = ''
+  for k in CVMFS_INFO:
+    cvmfs_opts += "%s:%s " % (k, CVMFS_INFO[k]['options'])
+  return cvmfs_opts[:-1]
+
+def get_cvmfs_keys(temp_dir):
+  """
+  Download cvmfs keys for repositories that have been defined
+  """
+  for k in CVMFS_INFO:
+    key_url = CVMFS_INFO[k]['key']
+    url_handle = urllib2.urlopen(key_url)
+    key_name = urlparse.urlparse(key_url)[2].split('/')[-1]
+    key_file = open(os.path.join(temp_dir, key_name), 'w')
+    url_data = url_handle.read(2048)
+    while url_data:
+      key_file.write(url_data)
+      url_data = url_handle.read(2048)
+    key_file.close()
+
 def run_application(temp_dir):
   """
   Run specified user application in a parrot environment
   """
   job_env = generate_env(temp_dir)
-  job_args = [JOB_SCRIPT]
+  get_cvmfs_keys(temp_dir)
+  job_args = ['./parrot/bin/parrot_run', 
+              '-t',
+              os.path.join(temp_dir, 'parrot_cache'),
+              '-r',
+              create_cvmfs_options(),
+              JOB_SCRIPT]
   job_args.extend(JOB_ARGS.split(' '))
   os.chdir(temp_dir)
   if len(sys.argv) > 1:
@@ -125,6 +158,8 @@ def main():
     sys.exit(exit_code)
   if not options.debug:
     shutil.rmtree(temp_dir)
+  else:
+    sys.stdout.write("Temp directory at %s\n" % temp_dir)
   sys.exit(exit_code)
 
 if __name__ == '__main__':

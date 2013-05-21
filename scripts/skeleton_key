@@ -2,7 +2,7 @@
 
 import optparse, os, sys, ConfigParser, getpass, re, urlparse, time
 
-VERSION = '0.5'
+VERSION = '0.6'
 
 
 def get_directories(config, dir_type):
@@ -83,11 +83,11 @@ def parse_cvmfs_options(config):
     if not config.has_option('CVMFS', repo_opt):
       # no more repos to add
       break
-    cvmfs_info[repo_opt] = {}
+    repo_name = config.get('CVMFS', repo_opt)
+    cvmfs_info[repo_name] = {}
     opt_name = "repo%s_key" % repo_num
     if config.has_option('CVMFS', opt_name):
-      key = config.get('CVMFS', opt_name)
-      cvmfs_info[repo_opt]['key'] = key
+      cvmfs_info[repo_name]['key'] = config.get('CVMFS', opt_name)
     else:
       sys.stderr.write("Missing %s in CVMFS section\n" % opt_name)
       sys.exit(1)
@@ -95,8 +95,8 @@ def parse_cvmfs_options(config):
     opt_name = "repo%s_options" % repo_num
     if config.has_option('CVMFS', opt_name):
       cvmfs_options = config.get('CVMFS', opt_name)
-      cvmfs_options = set_cvmfs_key(cvmfs_options, cvmfs_info[repo_opt]['key'])
-      cvmfs_info[repo_opt]['options'] = cvmfs_options
+      cvmfs_options = set_cvmfs_key(cvmfs_options, cvmfs_info[repo_name]['key'])
+      cvmfs_info[repo_name]['options'] = cvmfs_options
     else:
       sys.stderr.write("Missing %s in CVMFS section\n" % opt_name)
       sys.exit(1)
