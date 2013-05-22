@@ -112,8 +112,10 @@ def run_application(temp_dir):
               '-t',
               os.path.join(temp_dir, 'parrot_cache'),
               '-r',
-              create_cvmfs_options(),
-              JOB_SCRIPT]
+              create_cvmfs_options()]
+  if TICKET_CONTENTS != "":
+    job_args.extend(['-i', 'chirp.ticket'])
+  job_args.append(JOB_SCRIPT)
   job_args.extend(JOB_ARGS.split(' '))
   os.chdir(temp_dir)
   if len(sys.argv) > 1:

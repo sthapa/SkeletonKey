@@ -12,7 +12,7 @@ def setup_chirp(options, cctools_dir):
     chirp_config_path = os.path.join(chirp_dir, "chirp_options")
     chirp_config = open(chirp_config_path, "w")
     if options.hdfs_uri is not None:
-        chirp_config.write("HDFS_URI=\"%s\"\n" % hdfs_uri)
+        chirp_config.write("HDFS_URI=\"%s\"\n" % options.hdfs_uri)
     elif options.export_dir is not None:
         chirp_config.write("EXPORT_DIR=\"%s\"\n" % options.export_dir)
     else:
