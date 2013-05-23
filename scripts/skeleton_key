@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import optparse, os, sys, ConfigParser, getpass, re, urlparse, time
+import optparse, os, sys, ConfigParser, getpass, re, urlparse, time, shutil
 
 VERSION = '0.6'
 
@@ -104,6 +104,31 @@ def parse_cvmfs_options(config):
     
   return cvmfs_info
 
+def reset_acls(base_dir, read_dirs, write_dirs):
+  """
+  Check and reset acls in directories as needed
+  """
+  for dir_name in read_dirs:
+    if dir_name[0] == '/':
+      acl_name = os.path.join(base_dir, dir_name[1:], '.__acl')
+    else:
+      acl_name = os.path.join(base_dir, dir_name, '.__acl') 
+    if not os.path.exists(acl_name):
+      shutil.copy(os.path.expanduser('~/.chirp/acl'),
+                  acl_name)
+
+    if not os.path.exists(acl_name):
+      shutil.copy(os.abspath('~/.chirp/acl'),
+                  acl_name)
+  for dir_name in write_dirs:
+    if dir_name[0] == '/':
+      acl_name = os.path.join(base_dir, dir_name[1:], '.__acl')
+    else:
+      acl_name = os.path.join(base_dir, dir_name, '.__acl') 
+    if not os.path.exists(acl_name):
+      shutil.copy(os.path.expanduser('~/.chirp/acl'),
+                  acl_name)
+
 def create_chirp_ticket(config):
   """
   Create a chirp ticket with the appropriate permissions and return
@@ -119,6 +144,7 @@ def create_chirp_ticket(config):
   ticket_call = "chirp %s ticket_create -output myticket.ticket " \
                 "-bits 1024 -duration 86400 " % chirp_host
   base_dir = config.get('Directories', 'export_base')
+  reset_acls(base_dir, read_directories, write_directories)
   for directory in read_directories:
     ticket_call += " %s rl " % directory
     

@@ -116,7 +116,8 @@ def run_application(temp_dir):
   if TICKET_CONTENTS != "":
     job_args.extend(['-i', 'chirp.ticket'])
   job_args.append(JOB_SCRIPT)
-  job_args.extend(JOB_ARGS.split(' '))
+  if JOB_ARGS != "":
+    job_args.extend(JOB_ARGS.split(' '))
   os.chdir(temp_dir)
   if len(sys.argv) > 1:
     job_args.extend(sys.argv[1:])

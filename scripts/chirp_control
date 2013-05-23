@@ -43,11 +43,10 @@ case "$1" in
       if [ $RETVAL -eq 0 ] ;
       then
           touch $CHIRP_LOCKFILE
-          echo $CHIRP_PORT > $CHIRP_DIR/chirp.port
-	      pid="$(pidofproc chirp_server)"
-	      echo  $pid > $CHIRP_PIDFILE
-	      success  
-	      echo "Starting chirp server:"
+	  pid="$(pidofproc chirp_server)"
+	  echo  $pid > $CHIRP_PIDFILE
+	  success  
+	  echo "Starting chirp server:"
       fi
         ;;
 
