@@ -12,7 +12,7 @@ PARROT_URL = '%%%PARROT_URL%%%'
 JOB_SCRIPT = '%%%JOB_SCRIPT%%%'
 JOB_ARGS = %%%JOB_ARGS%%%
 CVMFS_INFO = %%%CVMFS_INFO%%%
-version = '0.6'
+version = '0.7'
 
 def write_ticket(directory):
   """
