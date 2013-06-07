@@ -39,10 +39,14 @@ def download_tarball(url, path):
     url_data = url_handle.read(2048)
   os.close(fhandle)
   downloaded_tarfile = tarfile.open(download_file)
+  cur_dir = os.getcwd()
+  os.chdir(path)
   extract_path = os.path.join(path,
                               downloaded_tarfile.getmembers()[0].name)
-  downloaded_tarfile.extractall(path=path)
+  for tar_info in downloaded_tarfile:
+    downloaded_tarfile.extract(tar_info)
   os.unlink(download_file)
+  os.chdir(cur_dir)
   return extract_path
 
 def setup_application(directory):
@@ -71,6 +75,7 @@ def generate_env(parrot_path):
     job_env['HTTP_PROXY'] = WEB_PROXY
   job_env['PARROT_ALLOW_SWITCHING_CVMFS_REPOSITORIES'] = '1'
   job_env['PARROT_HELPER'] = os.path.join(parrot_path,
+                                          'parrot',
                                           'lib',
                                           'libparrot_helper.so')
   job_env['CHIRP_MOUNT'] = CHIRP_MOUNT
