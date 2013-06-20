@@ -51,8 +51,7 @@ def setup_cctools_binaries(options):
     """Download the appropriate version of cctools and install"""
     for os_version in ('5', '6'):
       cctools_url = "http://www3.nd.edu/~ccl/software/files/" \
-                    "cctools-current-x86_64-redhat%s.tar.gz" % (latest_version, 
-                                                                os_version)
+                    "cctools-current-x86_64-redhat%s.tar.gz" % (os_version)
       cctools_dir = download_tarball(cctools_url, options.bin_dir)
       if os_version == platform.dist()[1][0]: 
         os.link(os.path.join(cctools_dir, 'bin', 'chirp_server'),
