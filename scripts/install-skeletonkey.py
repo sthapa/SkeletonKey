@@ -49,19 +49,10 @@ def download_tarball(url, path):
 
 def setup_cctools_binaries(options):
     """Download the appropriate version of cctools and install"""
-    cctools_page = urllib2.urlopen('http://www3.nd.edu/~ccl/software/files/').read()
-    latest_version = None
-    try:
-        latest_version  = re.findall('href=cctools-(\d\.\d\.\d)-source.tar.gz', 
-                                     cctools_page)[-1]
-    except:
-        sys.stderr.write("Can't get cctools tarball link\n")
-        sys.exit(1)
-    sys_cctools_dir = None
     for os_version in ('5', '6'):
       cctools_url = "http://www3.nd.edu/~ccl/software/files/" \
-                    "cctools-%s-x86_64-redhat%s.tar.gz" % (latest_version, 
-                                                           os_version)
+                    "cctools-current-x86_64-redhat%s.tar.gz" % (latest_version, 
+                                                                os_version)
       cctools_dir = download_tarball(cctools_url, options.bin_dir)
       if os_version == platform.dist()[1][0]: 
         os.link(os.path.join(cctools_dir, 'bin', 'chirp_server'),
