@@ -104,30 +104,64 @@ def parse_cvmfs_options(config):
     
   return cvmfs_info
 
+def set_acl(directory, acls):
+  """
+  Check the acl for a directory and change if needed
+  """
+  acl_file_name = os.path.join(directory, '.__acl')
+  user_auth = 'unix:%s' % getpass.getuser()
+  if not os.path.exists(acl_file_name):
+    acl_file = open(acl_file_name, 'w')
+    acl_file.write("%s %s\n" % (user_auth, acls))
+    acl_file.close()
+    return True
+
+  if os.path.exists(acl_file_name) and not os.path.isfile(acl_file_name):
+    return False
+  
+  acl_file = open(acl_file_name)
+  new_acls = []
+  rewrite_file = False
+  for line in acl_file:
+    if line.startswith(user_auth):
+      cur_acls = line.split(' ')[1]
+      modified_acl = ''
+      acls_present = True
+      for char in acls:
+        if char not in cur_acls:
+          modified_acl += char
+          rewrite_file = True
+      modified_acl += cur_acls
+      new_acls.append("%s %s" % (user_auth, modified_acl))
+    else:
+      new_acls.append(line)
+  acl_file.close()
+  if rewrite_file:
+    os.unlink(acl_file_name)
+    acl_file = open(acl_file_name, 'w')
+    acl_file.write("\n".join(new_acls))
+    acl_file.close()
+  return True
+
 def reset_acls(base_dir, read_dirs, write_dirs):
   """
   Check and reset acls in directories as needed
   """
   for dir_name in read_dirs:
-    if dir_name[0] == '/':
-      acl_name = os.path.join(base_dir, dir_name[1:], '.__acl')
+    if dir_name.startswith('/'):
+      acl_dir = os.path.join(base_dir, dir_name[1:])
     else:
-      acl_name = os.path.join(base_dir, dir_name, '.__acl') 
-    if not os.path.exists(acl_name):
-      shutil.copy(os.path.expanduser('~/.chirp/acl'),
-                  acl_name)
+      acl_dir = os.path.join(base_dir, dir_name) 
+    if not set_acl(acl_dir, 'r'):
+      sys.stderr.write("Can't set acls for %s\n" % dir_name)
 
-    if not os.path.exists(acl_name):
-      shutil.copy(os.abspath('~/.chirp/acl'),
-                  acl_name)
   for dir_name in write_dirs:
-    if dir_name[0] == '/':
-      acl_name = os.path.join(base_dir, dir_name[1:], '.__acl')
+    if dir_name.startswith('/'):
+      acl_dir = os.path.join(base_dir, dir_name[1:])
     else:
-      acl_name = os.path.join(base_dir, dir_name, '.__acl') 
-    if not os.path.exists(acl_name):
-      shutil.copy(os.path.expanduser('~/.chirp/acl'),
-                  acl_name)
+      acl_dir = os.path.join(base_dir, dir_name) 
+    if not set_acl(acl_dir, 'rwd'):
+      sys.stderr.write("Can't set acls for %s\n" % dir_name)
 
 def create_chirp_ticket(config):
   """

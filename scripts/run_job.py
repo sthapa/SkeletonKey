@@ -137,6 +137,11 @@ def main():
                     help="Enabling debugging",
                     action="store_true", 
                     default=False)
+  parser.add_option("--preserve-dir", 
+                    dest="preserve_dir",
+                    help="Preserver working directory for debugging",
+                    action="store_true", 
+                    default=False)
   (options, args) = parser.parse_args()  
   try:
     temp_dir = tempfile.mkdtemp()
@@ -163,11 +168,14 @@ def main():
   exit_code = run_application(temp_dir)
   if exit_code != 0:
     sys.stderr.write("Application exited with error\n")
+    if options.debug:
+      sys.stderr.write("Exit code: %d\n" % exit_code)
     sys.exit(exit_code)
-  if not options.debug:
-    shutil.rmtree(temp_dir)
-  else:
+    
+  if options.preserve_dir:
     sys.stdout.write("Temp directory at %s\n" % temp_dir)
+  else:
+    shutil.rmtree(temp_dir)
   sys.exit(exit_code)
 
 if __name__ == '__main__':

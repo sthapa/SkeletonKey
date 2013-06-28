@@ -50,7 +50,7 @@ def download_tarball(url, path):
 def setup_cctools_binaries(options):
     """Download the appropriate version of cctools and install"""
     for os_version in ('5', '6'):
-      cctools_url = "http://www3.nd.edu/~ccl/software/files/" \
+      cctools_url = "http://uc3-data.uchicago.edu/parrot/" \
                     "cctools-current-x86_64-redhat%s.tar.gz" % (os_version)
       cctools_dir = download_tarball(cctools_url, options.bin_dir)
       if os_version == platform.dist()[1][0]: 
