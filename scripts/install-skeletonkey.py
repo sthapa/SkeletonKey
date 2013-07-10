@@ -2,7 +2,7 @@
 
 import os, optparse, sys, re, urllib2, tarfile, tempfile, shutil, platform
 
-version = '0.7'
+version = '0.9'
 
 def setup_chirp(options, cctools_dir):
     """Setup .chirp and setup chirp options"""

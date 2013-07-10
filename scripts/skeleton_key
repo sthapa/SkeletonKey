@@ -2,7 +2,7 @@
 
 import optparse, os, sys, ConfigParser, getpass, re, urlparse, time, shutil
 
-VERSION = '0.7'
+VERSION = '0.9'
 
 
 def get_directories(config, dir_type):
@@ -194,6 +194,22 @@ def create_chirp_ticket(config):
   os.unlink('myticket.ticket')
   return ticket
 
+def get_user_proxy(config):
+  """
+  If specified get user proxy information to place in the job wrapper
+  """
+  if not config.has_option('Application', 'user_proxy'):
+    return ""
+  proxy_name = config.get('Application', 'user_proxy')
+  try:
+    if proxy_name.upper() == 'DEFAULT':
+      proxy_name = os.path.join('/', 'tmp', "x509up_u%s" % os.getuid())
+    proxy = open(proxy_name, 'r').read()
+    return proxy
+  except:
+    sys.stderr.write("Can't read user proxy at %s\n" % proxy_name)
+    sys.exit(1)
+
 def parse_args(job_args):
   """
   Parse string with job arguments into a list for inclusion in job wrapper
@@ -305,7 +321,10 @@ def create_job_wrapper(output_file, config):
     
     template = template.replace('%%%CVMFS_INFO%%%',
                                 str(parse_cvmfs_options(config)))
-  
+
+    proxy = get_user_proxy(config)
+    template = template.replace('%%%USER_PROXY%%%', proxy)
+
     if config.has_section('Directories'):
       template = template.replace('%%%CHIRP_MOUNT%%%',
                                   "/chirp/%s" % get_chirp_host())

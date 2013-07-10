@@ -1,18 +1,19 @@
 #!/usr/bin/python
 
 import sys, os, subprocess, shutil, optparse, platform, tempfile, urllib2, tarfile
-import urlparse
+import urlparse, time, re
 
 TICKET_CONTENTS = """%%%TICKET%%%
 """
 CHIRP_MOUNT = '%%%CHIRP_MOUNT%%%'
 WEB_PROXY= '%%%WEB_PROXY%%%'
+USER_PROXY = """%%%USER_PROXY%%%"""
 APP_URL = '%%%APP_URL%%%'
 PARROT_URL = '%%%PARROT_URL%%%'
 JOB_SCRIPT = '%%%JOB_SCRIPT%%%'
 JOB_ARGS = %%%JOB_ARGS%%%
 CVMFS_INFO = %%%CVMFS_INFO%%%
-version = '0.7'
+version = '0.9'
 
 def write_ticket(directory):
   """
@@ -27,6 +28,36 @@ def write_ticket(directory):
     return True
   except IOError:
     return None
+
+def write_proxy(directory):
+  """
+  Extract and create user proxy file for application
+  """
+  if not os.path.exists(directory) or not os.path.isdir(directory):
+    return None
+  try:
+    ticket = open(os.path.join(directory, 'user_proxy'), 'w')
+    ticket.write(USER_PROXY)
+    ticket.close()
+    return True
+  except IOError:
+    return None
+
+def ticket_valid(): 
+  """
+  Check a ticket to see if it's still valid
+  """
+  if TICKET_CONTENTS == "":
+    # Don't need to worry about ticket expiration if the ticket is not present
+    return True
+  ticket_expiration = re.compile(r'Expires on (\w+\s+\w+\s+\d{1,2}\s+\d\d:\d\d:\d\d\s+\d{4})')
+  match = ticket_expiration.search(TICKET_CONTENTS)
+  if match is None:
+    # if no expiration written, assume ticket doesn't expire
+    return True
+  expiration = time.strptime(match.group(1),
+                             "%a %b %d %H:%M:%S %Y")
+  return time.time() > time.mktime(expiration)
 
 def download_tarball(url, path):
   """Download a tarball from a given url and extract it to specified path"""
@@ -70,9 +101,13 @@ def generate_env(parrot_path):
   Create a dict with the environment variables for binary + parrot
   """
   job_env = os.environ.copy()
+    
   if WEB_PROXY != "":
     job_env['http_proxy'] = WEB_PROXY
     job_env['HTTP_PROXY'] = WEB_PROXY
+  if job_env.has_key('OSG_SQUID_LOCATION') and job_env['OSG_SQUID_LOCATION'] != 'UNAVAILABLE':
+    job_env['http_proxy'] = job_env['OSG_SQUID_LOCATION']
+    job_env['HTTP_PROXY'] = job_env['OSG_SQUID_LOCATION']
   job_env['PARROT_ALLOW_SWITCHING_CVMFS_REPOSITORIES'] = '1'
   job_env['PARROT_HELPER'] = os.path.join(parrot_path,
                                           'parrot',
@@ -80,6 +115,18 @@ def generate_env(parrot_path):
                                           'libparrot_helper.so')
   job_env['CHIRP_MOUNT'] = CHIRP_MOUNT
   return job_env 
+
+def update_proxy(cvmfs_options):
+  """
+  Update cvmfs options to use local proxy if available
+  """
+  new_proxies = ""
+  if WEB_PROXY != "":   
+    new_proxies = WEB_PROXY + ";"
+  if os.environ.has_key('OSG_SQUID_LOCATION') and os.environ['OSG_SQUID_LOCATION'] != 'UNAVAILABLE':
+    new_proxies += "%s;" % os.environ['OSG_SQUID_LOCATION']
+  proxy_re = re.compile(r'proxies=(.*?)(,|$)')
+  return proxy_re.sub(r'proxies=' + new_proxies + r'\1\2', cvmfs_options)
 
 def create_cvmfs_options():
   """
@@ -89,7 +136,8 @@ def create_cvmfs_options():
     return ' '
   cvmfs_opts = ''
   for k in CVMFS_INFO:
-    cvmfs_opts += "%s:%s " % (k, CVMFS_INFO[k]['options'])
+    cvmfs_options = update_proxy(CVMFS_INFO[k]['options'])
+    cvmfs_opts += "%s:%s " % (k, cvmfs_options)
   return cvmfs_opts[:-1]
 
 def get_cvmfs_keys(temp_dir):
@@ -151,13 +199,18 @@ def main():
 
 
   if TICKET_CONTENTS != "":
-#    if ticket_expired(TICKET_CONTENTS):
-#      sys.stderr.write("ERROR: Ticket expired, exiting...\n")
-#      sys.exit(1)
+    if not ticket_valid():
+      sys.stderr.write("ERROR: Ticket expired, exiting...\n")
+      sys.exit(1)
     if not write_ticket(temp_dir):
       sys.stderr.write("Can't create ticket, exiting...\n")
       sys.exit(1)
-        
+   
+  if USER_PROXY != "":
+    if not write_proxy(temp_dir):
+      sys.stderr.write("Can't create user proxy, exiting...\n")
+      sys.exit(1)
+   
   if not setup_parrot(temp_dir):
     sys.stderr.write("Can't download parrot binaries, exiting...\n")
     sys.exit(1)
