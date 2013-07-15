@@ -2,7 +2,7 @@
 
 import optparse, os, sys, ConfigParser, getpass, re, urlparse, time, shutil
 
-VERSION = '0.9'
+VERSION = '0.10'
 
 
 def get_directories(config, dir_type):
@@ -216,7 +216,7 @@ def parse_args(job_args):
   """
   args = []
   if job_args == "":
-    return args
+    return '""'
   tokens = job_args.split(' ')
   double_quotes = False
   single_quotes = False
@@ -252,7 +252,7 @@ def parse_args(job_args):
         args.append(cur_token)
         cur_token = ''
         single_quotes = False
-  return args
+  return " ".join(args)
 
 def get_wrapper_template():
   """

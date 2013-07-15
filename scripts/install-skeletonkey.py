@@ -2,7 +2,7 @@
 
 import os, optparse, sys, re, urllib2, tarfile, tempfile, shutil, platform
 
-version = '0.9'
+VERSION = '0.10'
 
 def setup_chirp(options, cctools_dir):
     """Setup .chirp and setup chirp options"""
@@ -90,7 +90,7 @@ def setup_sk_binaries(options):
 
 def install_application():
     """Get responses and install skeletonKey based on user responses"""
-    parser = optparse.OptionParser(version="%prog " + version)
+    parser = optparse.OptionParser(version="%prog " + VERSION)
     parser.add_option("-b", "--bindir", dest="bin_dir",
                       help="Directory to install binaries in", 
                       metavar="BINDIR")

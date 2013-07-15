@@ -3,31 +3,14 @@
 import sys, os, subprocess, shutil, optparse, platform, tempfile, urllib2, tarfile
 import urlparse, time, re
 
-TICKET_CONTENTS = """%%%TICKET%%%
-"""
-CHIRP_MOUNT = '%%%CHIRP_MOUNT%%%'
-WEB_PROXY= '%%%WEB_PROXY%%%'
+WEB_PROXY= 'uc3-data.uchicago.edu:3128'
 USER_PROXY = """%%%USER_PROXY%%%"""
 APP_URL = '%%%APP_URL%%%'
-PARROT_URL = '%%%PARROT_URL%%%'
+PARROT_URL = 'http://uc3-data.uchicago.edu/parrot/'
 JOB_SCRIPT = '%%%JOB_SCRIPT%%%'
 JOB_ARGS = %%%JOB_ARGS%%%
-CVMFS_INFO = %%%CVMFS_INFO%%%
+CVMFS_INFO = {'atlas.cern.ch': {'options': 'url=http://cvmfs.racf.bnl.gov:8000/opt/atlas;http://cvmfs-stratum-one.cern.ch:8000/opt/atlas,pubkey=cern.ch.pub,quota_limit=2000,proxies=uc3-data.uchicago.edu:3128', 'key': 'http://uc3-data.uchicago.edu/keys/cern.ch.pub'}, 'oasis.opensciencegrid.org': {'options': 'url=http://oasis-replica.opensciencegrid.org:8000/cvmfs/oasis;http://cvmfs.fnal.gov:8000/cvmfs/oasis;http://cvmfs.racf.bnl.gov:8000/cvmfs/oasis,pubkey=opensciencegrid.org.pub,quota_limit=2000,proxies=uc3-data.uchicago.edu:3128', 'key': 'http://uc3-data.uchicago.edu/keys/opensciencegrid.org.pub'}, 'atlas-condb.cern.ch': {'options': 'url=http://cvmfs.racf.bnl.gov:8000/opt/atlas-condb;http://cvmfs-stratum-one.cern.ch:8000/opt/atlas-condb,pubkey=cern.ch.pub,quota_limit=2000,proxies=uc3-data.uchicago.edu:3128', 'key': 'http://uc3-data.uchicago.edu/keys/cern.ch.pub'}, 'osg.mwt2.org': {'options': 'url=http://uct2-cvmfs.mwt2.org/opt/osg,pubkey=mwt2.org.pub,quota_limit=2000,proxies=uc3-data.uchicago.edu:3128', 'key': 'http://uc3-data.uchicago.edu/keys/mwt2.org.pub'}}
 VERSION = '0.10'
-
-def write_ticket(directory):
-  """
-  Write out ticket information in directory specified
-  """
-  if not os.path.exists(directory) or not os.path.isdir(directory):
-    return None
-  try:
-    ticket = open(os.path.join(directory, 'chirp.ticket'), 'w')
-    ticket.write(TICKET_CONTENTS)
-    ticket.close()
-    return True
-  except IOError:
-    return None
 
 def write_proxy(directory):
   """
@@ -42,22 +25,6 @@ def write_proxy(directory):
     return True
   except IOError:
     return None
-
-def ticket_valid(): 
-  """
-  Check a ticket to see if it's still valid
-  """
-  if TICKET_CONTENTS == "":
-    # Don't need to worry about ticket expiration if the ticket is not present
-    return True
-  ticket_expiration = re.compile(r'Expires on (\w+\s+\w+\s+\d{1,2}\s+\d\d:\d\d:\d\d\s+\d{4})')
-  match = ticket_expiration.search(TICKET_CONTENTS)
-  if match is None:
-    # if no expiration written, assume ticket doesn't expire
-    return True
-  expiration = time.strptime(match.group(1),
-                             "%a %b %d %H:%M:%S %Y")
-  return time.time() > time.mktime(expiration)
 
 def download_tarball(url, path):
   """Download a tarball from a given url and extract it to specified path"""
@@ -113,7 +80,6 @@ def generate_env(parrot_path):
                                           'parrot',
                                           'lib',
                                           'libparrot_helper.so')
-  job_env['CHIRP_MOUNT'] = CHIRP_MOUNT
   return job_env 
 
 def update_proxy(cvmfs_options):
@@ -166,8 +132,6 @@ def run_application(temp_dir):
               os.path.join(temp_dir, 'parrot_cache'),
               '-r',
               create_cvmfs_options()]
-  if TICKET_CONTENTS != "":
-    job_args.extend(['-i', 'chirp.ticket'])
   job_args.append(JOB_SCRIPT)
   if JOB_ARGS != "":
     job_args.extend(JOB_ARGS.split(' '))
@@ -198,14 +162,6 @@ def main():
     sys.exit(1)
 
 
-  if TICKET_CONTENTS != "":
-    if not ticket_valid():
-      sys.stderr.write("ERROR: Ticket expired, exiting...\n")
-      sys.exit(1)
-    if not write_ticket(temp_dir):
-      sys.stderr.write("Can't create ticket, exiting...\n")
-      sys.exit(1)
-   
   if USER_PROXY != "":
     if not write_proxy(temp_dir):
       sys.stderr.write("Can't create user proxy, exiting...\n")
