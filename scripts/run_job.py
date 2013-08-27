@@ -164,8 +164,8 @@ def create_cvmfs_options():
     return ' '
   cvmfs_opts = ''
   for k in CVMFS_INFO:
-    if os.path.isdir(os.path.join('/', 'cvmfs', k)):
-      continue
+#    if os.path.isdir(os.path.join('/', 'cvmfs', k)):
+#      continue
     cvmfs_options = update_proxy(CVMFS_INFO[k]['options'])
     cvmfs_opts += "%s:%s " % (k, cvmfs_options)
   return cvmfs_opts[:-1]
