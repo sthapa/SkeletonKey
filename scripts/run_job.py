@@ -20,11 +20,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys, os, subprocess, shutil, optparse, platform, tempfile, urllib2, tarfile
-import urlparse, time, re
+import sys, os, subprocess, shutil, optparse, platform, tempfile, urllib2
+import tarfile, urlparse, time, re
 
 TICKET_CONTENTS = """%%%TICKET%%%
 """
+OSGC_PROXY = 'http://squid.osgconnect.org:3128'
+CATALOG_HOST = 'stash.opensciencegrid.net'
 CHIRP_MOUNT = '%%%CHIRP_MOUNT%%%'
 WEB_PROXY= '%%%WEB_PROXY%%%'
 USER_PROXY = """%%%USER_PROXY%%%"""
@@ -33,7 +35,7 @@ PARROT_URL = '%%%PARROT_URL%%%'
 JOB_SCRIPT = '%%%JOB_SCRIPT%%%'
 JOB_ARGS = %%%JOB_ARGS%%%
 CVMFS_INFO = %%%CVMFS_INFO%%%
-VERSION = '0.10'
+VERSION = '0.11-osgc'
 
 def write_ticket(directory):
   """
@@ -125,15 +127,21 @@ def generate_env(parrot_path):
   if WEB_PROXY != "":
     job_env['http_proxy'] = WEB_PROXY
     job_env['HTTP_PROXY'] = WEB_PROXY
+  else:
+    job_env['http_proxy'] = OSGC_PROXY
+    job_env['HTTP_PROXY'] = OSGC_PROXY
+    
   if job_env.has_key('OSG_SQUID_LOCATION') and job_env['OSG_SQUID_LOCATION'] != 'UNAVAILABLE':
     job_env['http_proxy'] = job_env['OSG_SQUID_LOCATION']
     job_env['HTTP_PROXY'] = job_env['OSG_SQUID_LOCATION']
+  
   job_env['PARROT_ALLOW_SWITCHING_CVMFS_REPOSITORIES'] = '1'
   job_env['PARROT_HELPER'] = os.path.join(parrot_path,
                                           'parrot',
                                           'lib',
                                           'libparrot_helper.so')
   job_env['CHIRP_MOUNT'] = CHIRP_MOUNT
+  job_env['CATALOG_HOST'] = CATALOG_HOST
   return job_env 
 
 def update_proxy(cvmfs_options):
@@ -186,6 +194,8 @@ def run_application(temp_dir):
   job_args = ['./parrot/bin/parrot_run', 
               '-t',
               os.path.join(temp_dir, 'parrot_cache'),
+              '-u',
+              'stash.opensciencegrid.net',
               '-r',
               create_cvmfs_options()]
   if TICKET_CONTENTS != "":
