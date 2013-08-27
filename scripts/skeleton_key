@@ -22,8 +22,10 @@
 
 import optparse, os, sys, ConfigParser, getpass, re, urlparse, time, shutil
 
-VERSION = '0.10'
-
+VERSION = '0.11-osgc'
+CHIRP_SERVER = 'stash.osgconnect.net'
+RUN_TEMPLATE_LOCATION = '/usr/share/skeletonkey/run_job.py'
+OASIS_CONFIG = {'oasis.opensciencegrid.org': {'options': 'url=http://oasis-replica.opensciencegrid.org:8000/cvmfs/oasis,pubkey=opensciencegrid.org.pub,quota_limit=2000,proxies=squid.osgconnect.net:3128', 'key': 'http://stash.osgconnect.net/keys/opensciencegrid.org.pub'}}
 
 def get_directories(config, dir_type):
   """
@@ -47,29 +49,7 @@ def prefix_base(base_dir, path):
     return os.path.join(base_dir, path[1:])
   return os.path.join(base_dir, path)
   
-def get_chirp_host():
-  """
-  Get chirp host information
-  """
-  chirp_dir = os.path.expanduser('~/.chirp')
-  options = open(os.path.join(chirp_dir, 'chirp_options')).read().strip()
-  match = re.search('CHIRP_HOST=\s*(\w.*)', options)
-  if match is None:
-    sys.stderr.write("Can't get chirp host, has SkeletonKey been installed?")
-    sys.exit(1)
-  if not os.path.exists(os.path.join(chirp_dir, 'chirp.port')):
-    sys.stderr.write("Can't get chirp port, has chirp been started?")
-    sys.exit(1)
-  port = open(os.path.join(chirp_dir, 'chirp.port')).read().strip()
-  return "%s:%s" % (match.group(1), port)
   
-  
-def generate_xrootd_args(config):
-  """
-  Generate xrootd specific arguments for parrot_run based on config file
-  """
-  return ""
-
 def set_cvmfs_key(cvmfs_options, key):
   """
   Set CVMFS pubkey option in cvmfs_options string, replacing current key if 
@@ -95,7 +75,7 @@ def parse_cvmfs_options(config):
   cvmfs_info = {}
   keys = []
   if not config.has_section('CVMFS'):
-    return cvmfs_info
+    return OASIS_CONFIG
   
   repo_num = 1
   while True:
@@ -121,7 +101,8 @@ def parse_cvmfs_options(config):
       sys.stderr.write("Missing %s in CVMFS section\n" % opt_name)
       sys.exit(1)
     repo_num += 1
-    
+  if 'oasis.opensciencegrid.org' not in cvmfs_info:
+    cvmfs_info['oasis.opensciencegrid.org'] = OASIS_CONFIG['oasis.opensciencegrid.org']
   return cvmfs_info
 
 def set_acl(directory, acls):
@@ -192,11 +173,10 @@ def create_chirp_ticket(config):
     return ""
     
   ticket = ""
-  chirp_host = get_chirp_host()
   read_directories = get_directories(config, 'read')
   write_directories = get_directories(config, 'write')
-  ticket_call = "chirp %s ticket_create -output myticket.ticket " \
-                "-bits 1024 -duration 86400 " % chirp_host
+  ticket_call = "chirp stash.opensciencegrid.net:%s ticket_create -output myticket.ticket " \
+                "-bits 1024 -duration 86400 "  % (os.getuid())
   base_dir = config.get('Directories', 'export_base')
   reset_acls(base_dir, read_directories, write_directories)
   for directory in read_directories:
@@ -278,17 +258,8 @@ def get_wrapper_template():
   """
   Check the parrot config and get the wrapper template based on that
   """
-  wrapper_location = None
+  wrapper_location = RUN_TEMPLATE_LOCATION
   config = ConfigParser.SafeConfigParser()
-  config.read(os.path.expanduser('~/.skeletonkey.config'))
-  if (config.has_section('Installation') and
-      config.has_option('Installation', 'location')):
-    wrapper_location =  os.path.join(config.get('Installation', 'location'), 
-                                     'templates',
-                                     'run_job.py')
-  else:
-    sys.stderr.write("Can't find location of wrapper template\n")
-    sys.exit(1)
   if (not os.path.exists(wrapper_location) or 
       not os.path.isfile(wrapper_location)):
     sys.stderr.write("Wrapper template not in specified " \
@@ -347,7 +318,7 @@ def create_job_wrapper(output_file, config):
 
     if config.has_section('Directories'):
       template = template.replace('%%%CHIRP_MOUNT%%%',
-                                  "/chirp/%s" % get_chirp_host())
+                                  "/chirp/stash.opensciencegrid.net:%s" % os.getuid()())
     open(output_file, 'w').write(template)
     os.chmod(output_file, 0700)
   except IOError, ex:

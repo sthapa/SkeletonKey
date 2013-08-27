@@ -11,13 +11,13 @@ def get_version():
   match = re.search("VERSION\s+=\s+'(.*)'", buffer)
   return match.group(1)
   
-setup(name='skeleton-key',
+setup(name='skeletonkey',
       version=get_version(),
       description='Package for skeleton-key and associated scripts',
       author='Suchandra Thapa',
       author_email='sthapa@ci.uchicago.edu',
       url='http://sk.uchicago.edu',
       scripts=['scripts/skeleton_key'],
-      data_files=['config/uc3-sample.ini']
+      data_files=[('share/skeletonkey', ['scripts/run_job.py'])]
       )
 
