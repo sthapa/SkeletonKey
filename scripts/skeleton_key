@@ -284,9 +284,9 @@ def create_job_wrapper(output_file, config):
     else:
       template = template.replace('%%%WEB_PROXY%%%', '')
 
-    if (not config.has_section('Parrot') or 
-        not (config.has_option('Parrot', 'location') and 
-             config.get('Parrot', 'location') != '')):
+    if (config.has_section('Parrot') and
+        config.has_option('Parrot', 'location') and 
+             config.get('Parrot', 'location') != ''):
       template = template.replace('%%%PARROT_URL%%%', 
                                   config.get('Parrot', 'location'))
     else:
