@@ -22,7 +22,7 @@
 
 import optparse, os, sys, ConfigParser, getpass, re, urlparse, time, shutil
 
-VERSION = '0.13-osgc'
+VERSION = '0.14-osgc'
 CHIRP_SERVER = 'stash.osgconnect.net'
 RUN_TEMPLATE_LOCATION = '/usr/share/skeletonkey/run_job.py'
 OASIS_CONFIG = {'oasis.opensciencegrid.org': {'options': 'url=http://oasis-replica.opensciencegrid.org:8000/cvmfs/oasis,pubkey=opensciencegrid.org.pub,quota_limit=2000,proxies=squid.osgconnect.net:3128', 'key': 'http://stash.osgconnect.net/keys/opensciencegrid.org.pub'}}
