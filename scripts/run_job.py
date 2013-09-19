@@ -25,7 +25,7 @@ import tarfile, urlparse, time, re
 
 TICKET_CONTENTS = """%%%TICKET%%%
 """
-OSGC_PROXY = 'http://squid.osgconnect.org:3128'
+OSGC_PROXY = 'http://squid.osgconnect.net:3128'
 CATALOG_HOST = 'stash.opensciencegrid.net'
 CHIRP_MOUNT = '%%%CHIRP_MOUNT%%%'
 WEB_PROXY= '%%%WEB_PROXY%%%'
@@ -194,8 +194,6 @@ def run_application(temp_dir):
   job_args = ['./parrot/bin/parrot_run', 
               '-t',
               os.path.join(temp_dir, 'parrot_cache'),
-              '-u',
-              'stash.opensciencegrid.net',
               '-r',
               create_cvmfs_options()]
   if TICKET_CONTENTS != "":

@@ -22,7 +22,7 @@
 
 import optparse, os, sys, ConfigParser, getpass, re, urlparse, time, shutil
 
-VERSION = '0.11-osgc'
+VERSION = '0.12-osgc'
 CHIRP_SERVER = 'stash.osgconnect.net'
 RUN_TEMPLATE_LOCATION = '/usr/share/skeletonkey/run_job.py'
 OASIS_CONFIG = {'oasis.opensciencegrid.org': {'options': 'url=http://oasis-replica.opensciencegrid.org:8000/cvmfs/oasis,pubkey=opensciencegrid.org.pub,quota_limit=2000,proxies=squid.osgconnect.net:3128', 'key': 'http://stash.osgconnect.net/keys/opensciencegrid.org.pub'}}
@@ -291,7 +291,7 @@ def create_job_wrapper(output_file, config):
                                   config.get('Parrot', 'location'))
     else:
       template = template.replace('%%%PARROT_URL%%%', 
-                                  'http://uc3-data.uchicago.edu/parrot')
+                                  'http://stash.osgconnect.net/parrot')
     if (config.has_section('Application') and
         config.has_option('Application', 'location') and 
         config.get('Application', 'location') != ''):
