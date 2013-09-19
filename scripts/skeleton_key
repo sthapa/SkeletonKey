@@ -318,7 +318,7 @@ def create_job_wrapper(output_file, config):
 
     if config.has_section('Directories'):
       template = template.replace('%%%CHIRP_MOUNT%%%',
-                                  "/chirp/stash.osgconnect.net:%s" % os.getuid()())
+                                  "/chirp/stash.osgconnect.net:%s" % os.getuid())
     open(output_file, 'w').write(template)
     os.chmod(output_file, 0700)
   except IOError, ex:
