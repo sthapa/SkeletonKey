@@ -175,7 +175,7 @@ def create_chirp_ticket(config):
   ticket = ""
   read_directories = get_directories(config, 'read')
   write_directories = get_directories(config, 'write')
-  ticket_call = "chirp stash.opensciencegrid.net:%s ticket_create -output myticket.ticket " \
+  ticket_call = "chirp stash.osgconnect.net:%s ticket_create -output myticket.ticket " \
                 "-bits 1024 -duration 86400 "  % (os.getuid())
   base_dir = config.get('Directories', 'export_base')
   reset_acls(base_dir, read_directories, write_directories)
@@ -286,7 +286,7 @@ def create_job_wrapper(output_file, config):
 
     if (config.has_section('Parrot') and
         config.has_option('Parrot', 'location') and 
-             config.get('Parrot', 'location') != ''):
+        config.get('Parrot', 'location') != ''):
       template = template.replace('%%%PARROT_URL%%%', 
                                   config.get('Parrot', 'location'))
     else:
@@ -318,7 +318,7 @@ def create_job_wrapper(output_file, config):
 
     if config.has_section('Directories'):
       template = template.replace('%%%CHIRP_MOUNT%%%',
-                                  "/chirp/stash.opensciencegrid.net:%s" % os.getuid()())
+                                  "/chirp/stash.osgconnect.net:%s" % os.getuid()())
     open(output_file, 'w').write(template)
     os.chmod(output_file, 0700)
   except IOError, ex:
